@@ -24,19 +24,17 @@ const App = () => {
 
 
   return (
-      
-        <Provider store={store}>
 
-<RootNavigator
-          ref={navigationRef}
-          initialState={initialNavigationState}
-          onStateChange={onNavigationStateChange}
-        />
-        </Provider>
-      // <View style={{flex:1}}>
-      
-      // </View>
+    <Provider store={store}>
+
+      <RootNavigator
+        ref={navigationRef}
+        initialState={initialNavigationState}
+        onStateChange={onNavigationStateChange}
+      />
+    </Provider>
    
+
   );
 };
 

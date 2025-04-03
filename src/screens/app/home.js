@@ -1,40 +1,74 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, PermissionsAndroid, Platform, Alert, TouchableOpacity, Modal, Button } from 'react-native';
-import Geolocation from 'react-native-geolocation-service';
+import { StyleSheet, Text, View, FlatList, PermissionsAndroid, Platform, Alert, TouchableOpacity, Modal, Image } from 'react-native';
+import Geolocation from '@react-native-community/geolocation'; 
 import { Routes } from '../../navigation';
 
 const nearbyPlaces = [
-  { id: 1, name: 'Shop 1', latitude: 8.1771, longitude: 77.4340, description: 'This is a popular shop.' },
-  { id: 2, name: 'Shop 2', latitude: 8.1782, longitude: 77.4352, description: 'This is a local shop.' },
-  { id: 3, name: 'School 1', latitude: 8.1793, longitude: 77.4365, description: 'A primary school.' },
-  { id: 4, name: 'Shop 3', latitude: 8.1804, longitude: 77.4378, description: 'A grocery store.' },
-  { id: 5, name: 'School 2', latitude: 8.1815, longitude: 77.4390, description: 'A secondary school.' },
+  {
+    id: 1,
+    name: 'Shop 1',
+    latitude: 8.1771,
+    longitude: 77.4340,
+    description: 'This is a popular shop where you can find a variety of electronics, home appliances, and accessories. They are known for their great customer service and frequent sales events.',
+    imageUrl: 'https://images.pexels.com/photos/135620/pexels-photo-135620.jpg', 
+  },
+  {
+    id: 2,
+    name: 'Shop 2',
+    latitude: 8.1782,
+    longitude: 77.4352,
+    description: 'A local shop offering a range of everyday items like groceries, snacks, and household goods. It’s a great place to stop by for quick essentials.',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUpp6AVCubklwHJOR7GbsyJss1WU5_Guge7A&s', 
+  },
+  {
+    id: 3,
+    name: 'School 1',
+    latitude: 8.1793,
+    longitude: 77.4365,
+    description: 'A primary school known for its nurturing environment and emphasis on academic excellence. It has state-of-the-art facilities and a dedicated staff focused on the holistic development of children.',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcStvKmx9iedtcTwHxAgv5YkSdDZbggELY0pfw&s', 
+  },
+  {
+    id: 4,
+    name: 'Shop 3',
+    latitude: 8.1804,
+    longitude: 77.4378,
+    description: 'A well-stocked grocery store offering fresh produce, organic options, and a wide range of household products. It’s perfect for your weekly grocery runs.',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRHu55qoCgPTau60FsS8I6IBbjMWF1ixU6B5g&s', 
+  },
+  {
+    id: 5,
+    name: 'School 2',
+    latitude: 8.1815,
+    longitude: 77.4390,
+    description: 'A secondary school that provides a rigorous academic curriculum with a focus on science, technology, and arts. It has modern classrooms and extracurricular activities to encourage student growth.',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-wrBGU3jQVcqCoNzMy8d6zEpj2h3fwI1TJg&s', 
+  },
 ];
 
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const toRadians = (deg) => (deg * Math.PI) / 180;
-  const R = 6371;
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
-
-const Home = ({ navigation }) => {
+const Home = ({ navigation ,route}) => {
   const [location, setLocation] = useState({
-    latitude: null,
-    longitude: null,
+    latitude: route.params?.latitude || null,
+    longitude: route.params?.longitude || null,
     error: null,
   });
 
-  const [placesWithDistance, setPlacesWithDistance] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
 
+  useEffect(() => {
+    
+    // This useEffect ensures that when the location changes, it updates the state
+    if (route.params?.latitude && route.params?.longitude) {
+      setLocation({
+        latitude: route.params.latitude,
+        longitude: route.params.longitude,
+        error: null,
+      });
+    }
+  }, [route.params]);
+
   const requestLocationPermission = async () => {
+    console.log('Requesting location permission...');
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -45,54 +79,67 @@ const Home = ({ navigation }) => {
           buttonPositive: 'OK',
         }
       );
+
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('Location permission denied.');
         Alert.alert('Permission Denied', 'Location permission is required to use this feature.');
         return false;
+      } else {
+        console.log('Location permission granted.');
+        return true;
       }
+    } else {
+      console.log('iOS: Location permission granted automatically.');
+      return true;
     }
-    return true;
   };
 
-  useEffect(() => {
-    const getLocation = async () => {
-      const permissionGranted = await requestLocationPermission();
-      if (permissionGranted) {
-        if (Platform.OS === 'ios') {
-          Geolocation.requestAuthorization('whenInUse');
-        }
-
-        Geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            setLocation({ latitude, longitude, error: null });
-
-            const placesWithDistance = nearbyPlaces.map((place) => {
-              const distance = calculateDistance(
-                latitude,
-                longitude,
-                place.latitude,
-                place.longitude
-              );
-              return { ...place, distance };
-            });
-            setPlacesWithDistance(placesWithDistance);
-          },
-          (error) => {
-            setLocation({ latitude: null, longitude: null, error: error.message });
-          },
-          { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
-        );
+  const getLocation = async () => {
+    const permissionGranted = await requestLocationPermission();
+    if (permissionGranted) {
+      if (Platform.OS === 'ios') {
+        Geolocation.requestAuthorization('whenInUse');
       }
-    };
 
-    getLocation();
-  }, []);
+      console.log('Getting current location...');
+      Geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log('Location fetched:', { latitude, longitude });
+          setLocation({ latitude, longitude, error: null });
+        },
+        (error) => {
+          console.log('Geolocation error: ', error);
+          setLocation({ latitude: null, longitude: null, error: error.message });
+          Alert.alert('Error', 'Failed to fetch location. Please try again later.');
+        },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
+      );
+    }
+  };
+
+  const viewMap = (place) => {
+    navigation.navigate(Routes.DATA, {
+      latitude: place.latitude,
+      longitude: place.longitude,
+      name: place.name,
+      description:place.description,
+    });
+  };
 
   const renderPlace = ({ item }) => (
     <View style={styles.placeItem}>
+      <Image source={{ uri: item.imageUrl }} style={styles.placeImage} />
       <Text style={styles.placeName}>{item.name}</Text>
       <Text style={styles.placeDescription}>{item.description}</Text>
-      <Text style={styles.placeDistance}>Distance: {item.distance.toFixed(2)} km</Text>
+
+     
+      <TouchableOpacity
+        style={styles.viewMapButton}
+        onPress={() => viewMap(item)}
+      >
+        <Text style={styles.viewMapButtonText}>View Map</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -103,16 +150,40 @@ const Home = ({ navigation }) => {
   const confirmLogout = () => {
     setModalVisible(false);
     Alert.alert('Logged out successfully');
-    navigation.navigate(Routes.OUTSIDE_STACK,{Screen:Routes.LOGIN});
+    navigation.navigate(Routes.OUTSIDE_STACK, { screen: Routes.LOGIN });
   };
 
   const cancelLogout = () => {
     setModalVisible(false);
   };
 
+  const updateCurrentLocation = () => {
+    console.log('Updating location...');
+    Geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log('Updated location:', { latitude, longitude });
+        setLocation({ latitude, longitude, error: null });
+  
+       
+        navigation.navigate(Routes.MAPS, {
+          latitude,
+          longitude,
+          name: 'Your Current Location',  
+          description: 'This is my current location.',
+        });
+      },
+      (error) => {
+        console.error('Geolocation error: ', error);
+        setLocation({ latitude: null, longitude: null, error: error.message });
+      },
+     
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}></Text>
+      <Text style={styles.title}>Nearby Places</Text>
 
       {location.error ? (
         <Text style={styles.error}>Error: {location.error}</Text>
@@ -120,12 +191,14 @@ const Home = ({ navigation }) => {
         <Text style={styles.location}>
           Latitude: {location.latitude}, Longitude: {location.longitude}
         </Text>
-      ) : (
-        <Text style={styles.loading}>Loading location...</Text>
-      )}
+      ) : null}
+
+      <TouchableOpacity style={styles.currentLocationButton} onPress={updateCurrentLocation}>
+        <Text style={styles.currentLocationButtonText}>Current Location</Text>
+      </TouchableOpacity>
 
       <FlatList
-        data={placesWithDistance}
+        data={nearbyPlaces}
         renderItem={renderPlace}
         keyExtractor={(item) => item.id.toString()}
       />
@@ -134,7 +207,6 @@ const Home = ({ navigation }) => {
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
 
-     
       <Modal
         animationType="slide"
         transparent={true}
@@ -190,13 +262,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     textAlign: 'center',
   },
-  placeListTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 40,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
   placeItem: {
     padding: 12,
     backgroundColor: '#fff',
@@ -208,6 +273,12 @@ const styles = StyleSheet.create({
     shadowRadius: 3.5,
     elevation: 5,
   },
+  placeImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
   placeName: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -216,9 +287,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'gray',
   },
-  placeDistance: {
-    fontSize: 14,
-    color: 'green',
+  viewMapButton: {
+    backgroundColor: '#3498db',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  viewMapButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  currentLocationButton: {
+    backgroundColor: 'green',
+    padding: 12,
+    marginTop: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '60%',
+    alignSelf: 'center',
+  },
+  currentLocationButtonText: {
+    color: '#fff',
+    fontSize: 18,
   },
   logoutButton: {
     backgroundColor: 'green',
@@ -226,9 +317,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     borderRadius: 8,
     alignItems: 'center',
-    width:'50%',
-    left:100,
-    bottom:70
+    width: '50%',
+    alignSelf: 'center',
   },
   logoutButtonText: {
     color: '#fff',

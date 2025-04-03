@@ -6,6 +6,7 @@ export const Routes={
     INSIDE_STACK:'Inside Stack',
     ...{
         HOME:"Home",
-        DATA:"Data"
+        DATA:"Data",
+        MAPS:"Maps"
     },
 };
